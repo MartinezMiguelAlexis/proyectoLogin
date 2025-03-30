@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prueba API Node.js</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .endpoint {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+      }
+      input,
+      button {
+        padding: 8px;
+        margin: 5px 0;
+      }
+      button {
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      pre {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      .error {
+        color: red;
+      }
+      .editable-field {
+        background-color: #ffffcc;
+        transition: background-color 0.3s;
+      }
+      .editable-field:focus {
+        background-color: #ffffff;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      table,
+      th,
+      td {
+        border: 1px solid #ddd;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+      }
+      tr:hover {
+        background-color: #f5f5f5;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Prueba de API Node.js</h1>
+
+    <div class="endpoint">
+      <h2>Registro</h2>
+      <input type="text" id="reg-username" placeholder="Nombre de usuario" />
+      <input type="password" id="reg-password" placeholder="Contraseña" />
+      <button onclick="registrar()">Registrar</button>
+      <pre id="reg-result"></pre>
+    </div>
+
+    <div class="endpoint">
+      <h2>Login</h2>
+      <input type="text" id="login-username" placeholder="Nombre de usuario" />
+      <input type="password" id="login-password" placeholder="Contraseña" />
+      <button onclick="login()">Login</button>
+      <pre id="login-result"></pre>
+    </div>
+
+    <div class="endpoint">
+      <h2>Perfil (Protegido)</h2>
+      <button onclick="perfil()">Obtener Perfil</button>
+      <pre id="perfil-result"></pre>
+    </div>
+
+    <div class="endpoint">
+      <h2>CRUD de Productos</h2>
+
+      <h3>Crear Producto</h3>
+      <input type="text" id="prod-nombre" placeholder="Nombre" />
+      <input
+        type="number"
+        id="prod-cantidad"
+        placeholder="Cantidad"
+        step="0.01"
+      />
+      <input type="text" id="prod-unidad" placeholder="Unidad (kg, lt, etc)" />
+      <input type="date" id="prod-fecha" />
+      <button onclick="crearProducto()">Crear Producto</button>
+      <pre id="prod-crear-result"></pre>
+
+      <h3>Lista de Productos</h3>
+      <button onclick="obtenerProductos()">Obtener Productos</button>
+      <div id="productos-lista"></div>
+
+      <h3>Obtener Producto Específico</h3>
+      <input type="number" id="prod-id" placeholder="ID del producto" />
+      <button onclick="obtenerProducto()">Obtener</button>
+      <pre id="prod-obtener-result"></pre>
+
+      <h3>Actualizar Producto</h3>
+      <input
+        type="number"
+        id="prod-actualizar-id"
+        placeholder="ID del producto"
+        onchange="cargarProductoParaEditar()"
+      />
+      <input
+        type="text"
+        id="prod-actualizar-nombre"
+        placeholder="Nombre"
+        class="editable-field"
+      />
+      <input
+        type="number"
+        id="prod-actualizar-cantidad"
+        placeholder="Cantidad"
+        step="0.01"
+        class="editable-field"
+      />
+      <input
+        type="text"
+        id="prod-actualizar-unidad"
+        placeholder="Unidad"
+        class="editable-field"
+      />
+      <input type="date" id="prod-actualizar-fecha" class="editable-field" />
+      <button onclick="actualizarProducto()">Actualizar</button>
+      <pre id="prod-actualizar-result"></pre>
+
+      <h3>Eliminar Producto</h3>
+      <input
+        type="number"
+        id="prod-eliminar-id"
+        placeholder="ID del producto"
+      />
+      <button onclick="eliminarProducto()">Eliminar</button>
+      <pre id="prod-eliminar-result"></pre>
+    </div>
+
+    <script>
+      const API_URL = "http://localhost:3000";
+      let token = null;
+
+      function mostrarError(elemento, mensaje) {
+        elemento.innerHTML = `<span class="error">${mensaje}</span>`;
+      }
+
+      async function registrar() {
+        const username = document.getElementById("reg-username").value;
+        const password = document.getElementById("reg-password").value;
+        const resultElement = document.getElementById("reg-result");
+
+        if (!username || !password) {
+          mostrarError(resultElement, "Usuario y contraseña son requeridos");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/registro`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ nombreUsuario: username, password }),
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function login() {
+        const username = document.getElementById("login-username").value;
+        const password = document.getElementById("login-password").value;
+        const resultElement = document.getElementById("login-result"); // Línea 165 corregida
+
+        if (!username || !password) {
+          mostrarError(resultElement, "Usuario y contraseña son requeridos");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ nombreUsuario: username, password }),
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+
+          if (data.token) {
+            token = data.token;
+            console.log("Token guardado:", token);
+          }
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message); // Línea 167 corregida
+        }
+      }
+
+      async function perfil() {
+        const resultElement = document.getElementById("perfil-result");
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/perfil`, {
+            method: "GET",
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      // Funciones para el CRUD de productos
+
+      async function crearProducto() {
+        const nombre = document.getElementById("prod-nombre").value;
+        const cantidad = document.getElementById("prod-cantidad").value;
+        const unidad = document.getElementById("prod-unidad").value;
+        const fecha = document.getElementById("prod-fecha").value;
+        const resultElement = document.getElementById("prod-crear-result");
+
+        if (!nombre || !cantidad || !unidad) {
+          mostrarError(
+            resultElement,
+            "Nombre, cantidad y unidad son requeridos"
+          );
+          return;
+        }
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({
+              nombre,
+              cantidad,
+              unidad,
+              fecha_compra: fecha || new Date().toISOString().split("T")[0],
+            }),
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+
+          // Limpiar campos después de crear
+          if (response.ok) {
+            document.getElementById("prod-nombre").value = "";
+            document.getElementById("prod-cantidad").value = "";
+            document.getElementById("prod-unidad").value = "";
+            document.getElementById("prod-fecha").value = "";
+            // Actualizar la lista de productos
+            await obtenerProductos();
+          }
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function obtenerProductos() {
+        const resultElement = document.getElementById("productos-lista");
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos`, {
+            method: "GET",
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          const data = await response.json();
+
+          if (data.error) {
+            mostrarError(resultElement, data.error);
+            return;
+          }
+
+          if (data.length === 0) {
+            resultElement.innerHTML = "<p>No hay productos registrados</p>";
+            return;
+          }
+
+          let html =
+            "<table><tr><th>ID</th><th>Nombre</th><th>Cantidad</th><th>Unidad</th><th>Fecha</th></tr>";
+          data.forEach((producto) => {
+            // Formatear la fecha (elimina la parte de tiempo si solo quieres la fecha)
+            const fechaOriginal = new Date(producto.fecha_compra);
+            const fechaFormateada = producto.fecha_compra.split('T')[0]; // Formato YYYY-MM-DD
+
+            html += `<tr onclick="cargarProductoDesdeTabla(${producto.id})">
+                <td>${producto.id}</td>
+                <td>${producto.nombre}</td>
+                <td>${producto.cantidad}</td>
+                <td>${producto.unidad}</td>
+                <td>${fechaFormateada}</td>
+            </tr>`;
+          });
+          html += "</table>";
+
+          resultElement.innerHTML = html;
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function obtenerProducto() {
+        const id = document.getElementById("prod-id").value;
+        const resultElement = document.getElementById("prod-obtener-result");
+
+        if (!id) {
+          mostrarError(resultElement, "ID del producto es requerido");
+          return;
+        }
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos/${id}`, {
+            method: "GET",
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function cargarProductoParaEditar() {
+        const id = document.getElementById("prod-actualizar-id").value;
+        const nombreInput = document.getElementById("prod-actualizar-nombre");
+        const cantidadInput = document.getElementById(
+          "prod-actualizar-cantidad"
+        );
+        const unidadInput = document.getElementById("prod-actualizar-unidad");
+        const fechaInput = document.getElementById("prod-actualizar-fecha");
+        const resultElement = document.getElementById("prod-actualizar-result");
+
+        if (!id) {
+          // Limpiar campos si no hay ID
+          nombreInput.value = "";
+          cantidadInput.value = "";
+          unidadInput.value = "";
+          fechaInput.value = "";
+          return;
+        }
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos/${id}`, {
+            method: "GET",
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            // Rellenar los campos con los datos del producto
+            nombreInput.value = data.nombre || "";
+            cantidadInput.value = data.cantidad || "";
+            unidadInput.value = data.unidad || "";
+
+            // Formatear la fecha para el input type="date"
+            if (data.fecha_compra) {
+              const fecha = new Date(data.fecha_compra);
+              fechaInput.value = fecha.toISOString().split("T")[0];
+            } else {
+              fechaInput.value = "";
+            }
+
+            resultElement.textContent = "Producto cargado para edición";
+          } else {
+            mostrarError(
+              resultElement,
+              data.error || "Error al cargar producto"
+            );
+            // Limpiar campos si hay error
+            nombreInput.value = "";
+            cantidadInput.value = "";
+            unidadInput.value = "";
+            fechaInput.value = "";
+          }
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function cargarProductoDesdeTabla(productId) {
+        document.getElementById("prod-actualizar-id").value = productId;
+        await cargarProductoParaEditar();
+
+        // Desplazarse suavemente a la sección de actualización
+        document.querySelector(".endpoint h3:nth-of-type(3)").scrollIntoView({
+          behavior: "smooth",
+        });
+      }
+
+      async function actualizarProducto() {
+        const id = document.getElementById("prod-actualizar-id").value;
+        const nombre = document.getElementById("prod-actualizar-nombre").value;
+        const cantidad = document.getElementById(
+          "prod-actualizar-cantidad"
+        ).value;
+        const unidad = document.getElementById("prod-actualizar-unidad").value;
+        const fecha = document.getElementById("prod-actualizar-fecha").value;
+        const resultElement = document.getElementById("prod-actualizar-result");
+
+        if (!id) {
+          mostrarError(resultElement, "ID del producto es requerido");
+          return;
+        }
+
+        if (!nombre || !cantidad || !unidad) {
+          mostrarError(
+            resultElement,
+            "Nombre, cantidad y unidad son requeridos"
+          );
+          return;
+        }
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({
+              nombre,
+              cantidad,
+              unidad,
+              fecha_compra: fecha || new Date().toISOString().split("T")[0],
+            }),
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+
+          // Recargar la lista de productos después de actualizar
+          if (response.ok) {
+            await obtenerProductos();
+          }
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function eliminarProducto() {
+        const id = document.getElementById("prod-eliminar-id").value;
+        const resultElement = document.getElementById("prod-eliminar-result");
+
+        if (!id) {
+          mostrarError(resultElement, "ID del producto es requerido");
+          return;
+        }
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos/${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+
+          // Limpiar campo después de eliminar
+          if (response.ok) {
+            document.getElementById("prod-eliminar-id").value = "";
+            // Actualizar la lista de productos
+            await obtenerProductos();
+          }
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+    </script>
+  </body>
+</html>
