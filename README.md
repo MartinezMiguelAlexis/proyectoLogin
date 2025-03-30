@@ -88,5 +88,22 @@ La interfaz incluye:
 - Tabla de productos con ordenamiento
 - Edición rápida con doble clic
 
+## ⚙️ Configuración
+
+1. Crea un archivo `config.js` en la raíz con este formato:
+```javascript
+module.exports = {
+    database: {
+        host: 'localhost',
+        user: 'TU_USUARIO_MYSQL',
+        password: 'TU_CONTRASEÑA_MYSQL',
+        database: 'proyecto2'
+    },
+    auth: {
+        secret: 'TU_CLAVE_SECRETA_JWT' // Ej: usa una cadena aleatoria fuerte
+    }
+};
+```
+
 ## 📝 Licencia
 MIT License - © 2023 [Alexis Martinez Miguel]

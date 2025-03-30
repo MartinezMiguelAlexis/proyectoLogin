@@ -1,0 +1,19 @@
+# Archivos que NO se subirán a GitHub
+
+# 1. Configuración sensible
+config.js
+
+# 2. Módulos de Node y dependencias
+node_modules/
+
+# 3. Archivos de entorno
+.env
+*.env
+
+# 4. Logs y archivos temporales
+*.log
+*.tmp
+
+# 5. Archivos del sistema
+.DS_Store
+Thumbs.db
