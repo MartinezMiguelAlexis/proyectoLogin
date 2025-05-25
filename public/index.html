@@ -159,6 +159,54 @@
       <pre id="prod-eliminar-result"></pre>
     </div>
 
+    <div class="endpoint">
+      <h2>Pasarela de Pagos</h2>
+
+      <h3>Productos para Pagar</h3>
+      <div id="productos-pago">
+        <!-- Se agregarán dinámicamente -->
+      </div>
+      <button onclick="agregarProductoPago()">Agregar Producto</button>
+
+      <h3>Crear Sesión de Pago</h3>
+      <button onclick="crearSesionPago()">Crear Pago</button>
+      <div id="pago-result"></div>
+
+      <h3>Verificar Pago</h3>
+      <input type="text" id="session-id" placeholder="ID de Sesión" />
+      <button onclick="verificarPago()">Verificar</button>
+      <pre id="verificar-pago-result"></pre>
+    </div>
+
+    <div class="endpoint">
+      <h2>Gestión de Precios</h2>
+
+      <h3>Actualizar Precio</h3>
+      <input
+        type="number"
+        id="precio-producto-id"
+        placeholder="ID del Producto"
+      />
+      <input
+        type="number"
+        id="nuevo-precio"
+        placeholder="Nuevo precio"
+        step="0.01"
+        min="0"
+      />
+      <button onclick="actualizarPrecio()">Actualizar Precio</button>
+      <pre id="precio-result"></pre>
+
+      <h3>Historial de Precios</h3>
+      <input
+        type="number"
+        id="historial-producto-id"
+        placeholder="ID del Producto"
+      />
+      <button onclick="obtenerHistorialPrecio()">Obtener Historial</button>
+      <div id="historial-precio-container"></div>
+    </div>
+
     <script>
       const API_URL = "http://localhost:3000";
       let token = null;
@@ -334,15 +382,15 @@
           data.forEach((producto) => {
             // Formatear la fecha (elimina la parte de tiempo si solo quieres la fecha)
             const fechaOriginal = new Date(producto.fecha_compra);
-            const fechaFormateada = producto.fecha_compra.split('T')[0]; // Formato YYYY-MM-DD
+            const fechaFormateada = producto.fecha_compra.split("T")[0]; // Formato YYYY-MM-DD
 
             html += `<tr onclick="cargarProductoDesdeTabla(${producto.id})">
-                <td>${producto.id}</td>
-                <td>${producto.nombre}</td>
-                <td>${producto.cantidad}</td>
-                <td>${producto.unidad}</td>
-                <td>${fechaFormateada}</td>
-            </tr>`;
+                      <td>${producto.id}</td>
+                      <td>${producto.nombre}</td>
+                      <td>${producto.cantidad}</td>
+                      <td>${producto.unidad}</td>
+                      <td>${fechaFormateada}</td>
+                  </tr>`;
           });
           html += "</table>";
 
@@ -544,6 +592,432 @@
           }
         } catch (error) {
           mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      // Variables para los productos de pago
+      let productosPago = [];
+
+      function agregarProductoPago() {
+        const contenedor = document.getElementById("productos-pago");
+        const id = Date.now(); // Usamos timestamp como ID único temporal
+
+        const div = document.createElement("div");
+        div.id = `producto-pago-${id}`;
+        div.className = "producto-pago";
+        div.innerHTML = `
+    <div class="producto-header">
+      <h4>Producto</h4>
+      <button onclick="eliminarProductoPago(${id})" class="btn-eliminar">×</button>
+    </div>
+    <div class="producto-fila">
+      <label>ID del Producto:</label>
+      <input type="number" id="prod-pago-id-${id}" placeholder="Ingresa ID" 
+             onchange="cargarProductoParaPago(${id})" class="input-id">
+    </div>
+    <div class="producto-fila">
+      <label>Nombre:</label>
+      <input type="text" id="prod-pago-nombre-${id}" readonly class="input-nombre">
+    </div>
+    <div class="producto-fila">
+      <label>Precio Unitario:</label>
+      <input type="number" id="prod-pago-precio-${id}" step="0.01" min="0" class="input-precio">
+    </div>
+    <div class="producto-fila">
+      <label>Cantidad:</label>
+      <input type="number" id="prod-pago-cantidad-${id}" min="1" value="1" class="input-cantidad">
+    </div>
+    <div class="producto-fila">
+      <label>Stock Disponible:</label>
+      <span id="prod-pago-stock-${id}" class="stock-disponible">-</span>
+    </div>
+  `;
+
+        contenedor.appendChild(div);
+        productosPago.push(id);
+      }
+
+      function eliminarProductoPago(id) {
+        const index = productosPago.indexOf(id);
+        if (index > -1) {
+          productosPago.splice(index, 1);
+          const elemento = document.getElementById(`producto-pago-${id}`);
+          if (elemento) elemento.remove();
+        }
+      }
+
+      async function crearSesionPago() {
+        const resultElement = document.getElementById("pago-result");
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        // Recopilar datos de los productos
+        const productos = [];
+        for (const id of productosPago) {
+          const productId = document.getElementById(`prod-pago-id-${id}`).value;
+          const nombre = document.getElementById(
+            `prod-pago-nombre-${id}`
+          ).value;
+          const precio = parseFloat(
+            document.getElementById(`prod-pago-precio-${id}`).value
+          );
+          const cantidad =
+            parseInt(
+              document.getElementById(`prod-pago-cantidad-${id}`).value
+            ) || 1;
+
+          if (!productId || !nombre || isNaN(precio)) {
+            mostrarError(resultElement, `Faltan datos en el producto ${id}`);
+            return;
+          }
+
+          productos.push({
+            productId,
+            nombre,
+            precio,
+            cantidad,
+          });
+        }
+
+        try {
+          console.log("Enviando productos:", productos); // Debug
+          console.log("Datos a enviar:", {
+            productos: productos.map((p) => ({
+              ...p,
+              precio: parseFloat(p.precio),
+              cantidad: parseInt(p.cantidad),
+            })),
+          });
+          const response = await fetch(`${API_URL}/crear-sesion-pago`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({ productos }),
+          });
+
+          const data = await response.json();
+          console.log("Respuesta del servidor:", data); // Debug
+
+          if (data.url) {
+            window.open(data.url, "_blank");
+            resultElement.innerHTML = `
+            <p>Sesión de pago creada exitosamente</p>
+            <p>ID de sesión: ${data.id}</p>
+            <p>Monto total: $${data.monto_total.toFixed(2)}</p>
+            <button onclick="window.open('${data.url}', '_blank')">Ir a Pagar</button>`;
+          } else {
+            mostrarError(
+              resultElement,
+              data.error || "No se pudo crear la sesión de pago"
+            );
+          }
+        } catch (error) {
+          console.error("Error en crearSesionPago:", error);
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function verificarStock(productos) {
+        try {
+          const response = await fetch(`${API_URL}/verificar-stock`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({ productos }),
+          });
+
+          const data = await response.json();
+          return data;
+        } catch (error) {
+          return { valido: false, mensaje: "Error al verificar stock" };
+        }
+      }
+
+      // Función auxiliar para verificar productos
+      async function verificarProductosPago(productos) {
+        try {
+          const response = await fetch(`${API_URL}/verificar-productos-pago`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({ productos }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            return {
+              valido: false,
+              mensaje: data.error || "Error al verificar productos",
+            };
+          }
+
+          // Verificar productos sin stock
+          const productosProblema = data.verificaciones.filter(
+            (p) => !p.exists || !p.inStock
+          );
+          if (productosProblema.length > 0) {
+            const mensaje = productosProblema
+              .map(
+                (p) =>
+                  `• ${p.nombre || "Producto"}: ${
+                    !p.exists ? "No existe" : "Stock insuficiente"
+                  }`
+              )
+              .join("\n");
+            return {
+              valido: false,
+              mensaje: `Problemas con los productos:\n${mensaje}`,
+            };
+          }
+
+          return { valido: true };
+        } catch (error) {
+          return {
+            valido: false,
+            mensaje: "Error al conectar con el servidor",
+          };
+        }
+      }
+
+      // Función auxiliar para copiar ID de sesión
+      function copiarAlPortapapeles(texto) {
+        navigator.clipboard
+          .writeText(texto)
+          .then(() => alert("ID copiado al portapapeles"))
+          .catch((err) => console.error("Error al copiar:", err));
+      }
+
+      async function verificarPago() {
+        const sessionId = document.getElementById("session-id").value;
+        const resultElement = document.getElementById("verificar-pago-result");
+
+        if (!sessionId) {
+          mostrarError(resultElement, "ID de sesión es requerido");
+          return;
+        }
+
+        if (!token) {
+          mostrarError(resultElement, "Debes iniciar sesión primero");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_URL}/verificar-pago/${sessionId}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: token,
+              },
+            }
+          );
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function verificarProductosPago() {
+        const productos = obtenerProductosParaPago(); // Reutiliza la función que recoge los datos del formulario
+
+        try {
+          const response = await fetch(`${API_URL}/verificar-productos-pago`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({ productos }),
+          });
+
+          const data = await response.json();
+
+          if (data.verificaciones) {
+            // Mostrar resultados al usuario
+            const problemas = data.verificaciones.filter(
+              (p) => !p.exists || !p.inStock
+            );
+            if (problemas.length > 0) {
+              alert(
+                `Problemas con:\n${problemas
+                  .map(
+                    (p) =>
+                      `Producto ${p.productId}: ${
+                        !p.exists ? "No existe" : "Stock insuficiente"
+                      }`
+                  )
+                  .join("\n")}`
+              );
+              return false;
+            }
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error("Error verificando productos:", error);
+          return false;
+        }
+      }
+
+      async function cargarProductoParaPago(divId) {
+        const productId = document.getElementById(
+          `prod-pago-id-${divId}`
+        ).value;
+        const nombreInput = document.getElementById(
+          `prod-pago-nombre-${divId}`
+        );
+        const precioInput = document.getElementById(
+          `prod-pago-precio-${divId}`
+        );
+        const stockSpan = document.getElementById(`prod-pago-stock-${divId}`);
+
+        if (!productId) {
+          nombreInput.value = "";
+          precioInput.value = "";
+          stockSpan.textContent = "-";
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/productos/${productId}`, {
+            method: "GET",
+            headers: {
+              Authorization: token,
+            },
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            nombreInput.value = data.nombre || "";
+            precioInput.value = data.precio_actual || "";
+            stockSpan.textContent = data.cantidad || "0";
+
+            // Mostrar tooltip con historial de precios
+            const historialResponse = await fetch(
+              `${API_URL}/productos/${productId}/precio/historial`,
+              {
+                headers: { Authorization: token },
+              }
+            );
+            const historial = await historialResponse.json();
+
+            if (historial.length > 0) {
+              precioInput.title =
+                "Historial de precios:\n" +
+                historial
+                  .map(
+                    (p) =>
+                      `${p.precio} (${new Date(
+                        p.fecha_inicio
+                      ).toLocaleDateString()} - ${
+                        p.fecha_fin
+                          ? new Date(p.fecha_fin).toLocaleDateString()
+                          : "actual"
+                      })`
+                  )
+                  .join("\n");
+            }
+          } else {
+            mostrarError(`producto-pago-${divId}`, "Producto no encontrado");
+            nombreInput.value = "";
+            precioInput.value = "";
+            stockSpan.textContent = "-";
+          }
+        } catch (error) {
+          console.error("Error al cargar producto:", error);
+          mostrarError(`producto-pago-${divId}`, "Error al cargar producto");
+        }
+      }
+
+      async function actualizarPrecio() {
+        const productId = document.getElementById("precio-producto-id").value;
+        const nuevoPrecio = document.getElementById("nuevo-precio").value;
+        const resultElement = document.getElementById("precio-result");
+
+        if (!productId || !nuevoPrecio) {
+          mostrarError(resultElement, "ID y precio son requeridos");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_URL}/productos/${productId}/precio`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token,
+              },
+              body: JSON.stringify({ nuevoPrecio }),
+            }
+          );
+
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          mostrarError(resultElement, "Error: " + error.message);
+        }
+      }
+
+      async function obtenerHistorialPrecio() {
+        const productId = document.getElementById(
+          "historial-producto-id"
+        ).value;
+        const container = document.getElementById("historial-precio-container");
+
+        if (!productId) {
+          mostrarError(container, "ID del producto es requerido");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_URL}/productos/${productId}/precio/historial`,
+            {
+              headers: { Authorization: token },
+            }
+          );
+
+          const historial = await response.json();
+
+          if (historial.length === 0) {
+            container.innerHTML =
+              "<p>No hay historial de precios para este producto</p>";
+            return;
+          }
+
+          let html =
+            "<table><tr><th>Precio</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Usuario</th></tr>";
+          historial.forEach((p) => {
+            html += `
+        <tr>
+          <td>$${p.precio.toFixed(2)}</td>
+          <td>${new Date(p.fecha_inicio).toLocaleDateString()}</td>
+          <td>${
+            p.fecha_fin ? new Date(p.fecha_fin).toLocaleDateString() : "Actual"
+          }</td>
+          <td>${p.nombreUsuario}</td>
+        </tr>
+      `;
+          });
+          html += "</table>";
+
+          container.innerHTML = html;
+        } catch (error) {
+          mostrarError(container, "Error: " + error.message);
         }
       }
     </script>
