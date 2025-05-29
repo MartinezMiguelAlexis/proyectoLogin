@@ -69,7 +69,11 @@ app.post(
 );
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: ["https://proyectologin.onrender.com", "http://localhost:3000"], // URLs permitidas
+  methods: "GET,POST,PUT,DELETE",
+  credentials: true // Si usas cookies/tokens
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
