@@ -1,7 +1,5 @@
 # Archivos que NO se subirán a GitHub
 
-# 1. Configuración sensible
-config.js
 
 # 2. Módulos de Node y dependencias
 node_modules/
