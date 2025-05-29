@@ -3,10 +3,10 @@ const config = require('../config');
 
 // Pool de conexiones para mejor manejo
 const pool = mysql.createPool({
-  host: config.database.host,
-  user: config.database.user,
-  password: config.database.password,
-  database: config.database.database,
+  host: process.env.DB_HOST || config.database.host,
+  user: process.env.DB_USER || config.database.user,
+  password: process.env.DB_PASSWORD || config.database.password,
+  database: process.env.DB_NAME || config.database.database,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0

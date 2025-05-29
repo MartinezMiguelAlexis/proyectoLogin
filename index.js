@@ -5,7 +5,7 @@ const auth = require("./db/auth");
 const products = require("./db/products");
 const db = require("./db/connection");
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const config = require("./config");
 const stripe = require("stripe")(config.stripe.secretKey, {
   apiVersion: "2023-08-16",
